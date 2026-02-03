@@ -1,0 +1,154 @@
+{
+  "project": "Quill TUI Dead Code Cleanup",
+  "branchName": "compound/cleanup-dead-code",
+  "description": "Remove all unused functions and constants to eliminate 18 compiler warnings",
+  "tasks": [
+    {
+      "id": "T-001",
+      "title": "Delete unused functions in src/actions/annotation.rs",
+      "description": "Remove create_annotation, delete_annotation, toggle_resolved, update_comment, update_category, update_severity functions. These are never called and duplicate Document methods.",
+      "acceptanceCriteria": [
+        "File `src/actions/annotation.rs` does NOT contain `fn create_annotation`",
+        "File `src/actions/annotation.rs` does NOT contain `fn delete_annotation`",
+        "File `src/actions/annotation.rs` does NOT contain `fn toggle_resolved`",
+        "File `src/actions/annotation.rs` does NOT contain `fn update_comment`",
+        "File `src/actions/annotation.rs` does NOT contain `fn update_category`",
+        "File `src/actions/annotation.rs` does NOT contain `fn update_severity`"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Deleted entire file - all functions were unused"
+    },
+    {
+      "id": "T-002",
+      "title": "Delete unused functions in src/actions/navigation.rs",
+      "description": "Remove next_annotation_offset, prev_annotation_offset, current_annotation_index functions. Keep annotation_offset_by_index which IS used.",
+      "acceptanceCriteria": [
+        "File `src/actions/navigation.rs` does NOT contain `fn next_annotation_offset`",
+        "File `src/actions/navigation.rs` does NOT contain `fn prev_annotation_offset`",
+        "File `src/actions/navigation.rs` does NOT contain `fn current_annotation_index`",
+        "File `src/actions/navigation.rs` contains `fn annotation_offset_by_index`"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Kept only annotation_offset_by_index"
+    },
+    {
+      "id": "T-003",
+      "title": "Update src/actions/mod.rs exports",
+      "description": "Remove wildcard exports that re-export unused functions. Only export what's actually used.",
+      "acceptanceCriteria": [
+        "File `src/actions/mod.rs` does NOT contain `pub use annotation::*`",
+        "File `src/actions/mod.rs` contains `pub use navigation::annotation_offset_by_index`"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "Updated exports"
+    },
+    {
+      "id": "T-004",
+      "title": "Update src/io/mod.rs exports",
+      "description": "Remove ExportDocument from public exports as it's only used internally.",
+      "acceptanceCriteria": [
+        "File `src/io/mod.rs` does NOT contain `ExportDocument` in pub use statement"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "Updated exports"
+    },
+    {
+      "id": "T-005",
+      "title": "Delete unused methods in src/model/text_range.rs",
+      "description": "Remove len(), is_empty(), overlaps() methods that are never called.",
+      "acceptanceCriteria": [
+        "File `src/model/text_range.rs` does NOT contain `fn len`",
+        "File `src/model/text_range.rs` does NOT contain `fn is_empty`",
+        "File `src/model/text_range.rs` does NOT contain `fn overlaps`"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "Removed unused methods"
+    },
+    {
+      "id": "T-006",
+      "title": "Delete unused methods in src/model/annotation.rs",
+      "description": "Remove Category::short(), Annotation::with_category(), Annotation::with_severity() methods.",
+      "acceptanceCriteria": [
+        "File `src/model/annotation.rs` does NOT contain `fn short`",
+        "File `src/model/annotation.rs` does NOT contain `fn with_category`",
+        "File `src/model/annotation.rs` does NOT contain `fn with_severity`"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": "Removed with_category and with_severity. KEPT Severity::short() - it IS used in ui.rs:207"
+    },
+    {
+      "id": "T-007",
+      "title": "Delete unused method in src/model/document.rs",
+      "description": "Remove annotation_at() method that is never called.",
+      "acceptanceCriteria": [
+        "File `src/model/document.rs` does NOT contain `fn annotation_at`"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": "Removed annotation_at method"
+    },
+    {
+      "id": "T-008",
+      "title": "Delete unused methods in src/app.rs",
+      "description": "Remove cursor_offset() and sorted_annotation_ids() methods that are never called.",
+      "acceptanceCriteria": [
+        "File `src/app.rs` does NOT contain `fn cursor_offset`",
+        "File `src/app.rs` does NOT contain `fn sorted_annotation_ids`"
+      ],
+      "priority": 8,
+      "passes": true,
+      "notes": "Removed both methods and unused uuid::Uuid import"
+    },
+    {
+      "id": "T-009",
+      "title": "Fix unused items in src/ui.rs",
+      "description": "Remove unused BASE color constant. Fix unused line_idx variable by prefixing with underscore.",
+      "acceptanceCriteria": [
+        "File `src/ui.rs` does NOT contain `const BASE`",
+        "File `src/ui.rs` contains `_line_idx` OR does not enumerate lines"
+      ],
+      "priority": 9,
+      "passes": true,
+      "notes": "Removed BASE constant, prefixed line_idx with underscore"
+    },
+    {
+      "id": "T-010",
+      "title": "Verify zero compiler warnings",
+      "description": "Run cargo check and confirm no warnings are emitted.",
+      "acceptanceCriteria": [
+        "Run `cd ~/quill-tui && cargo check 2>&1 | grep -c 'warning:'` - outputs 0"
+      ],
+      "priority": 10,
+      "passes": true,
+      "notes": "Zero warnings confirmed"
+    },
+    {
+      "id": "T-011",
+      "title": "Verify tests pass",
+      "description": "Run cargo test and confirm all tests pass.",
+      "acceptanceCriteria": [
+        "Run `cd ~/quill-tui && cargo test` - exits with code 0"
+      ],
+      "priority": 11,
+      "passes": true,
+      "notes": "2 tests passed"
+    },
+    {
+      "id": "T-012",
+      "title": "Verify release build succeeds",
+      "description": "Build release binary to ensure no issues with optimized compilation.",
+      "acceptanceCriteria": [
+        "Run `cd ~/quill-tui && cargo build --release` - exits with code 0"
+      ],
+      "priority": 12,
+      "passes": true,
+      "notes": "Release build successful"
+    }
+  ]
+}

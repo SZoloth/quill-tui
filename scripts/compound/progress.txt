@@ -1,0 +1,43 @@
+## Codebase Patterns
+- Use `#[serde(flatten)]` for inline serialization of nested structs (TextRange in Annotation)
+- Use `#[serde(rename_all = "camelCase")]` for JSON export compatibility with macOS Quill app
+- Navigation logic in `actions/` module, not in `app.rs` - keeps App state management clean
+- Line-to-offset translation via cached `line_starts` vector for O(1) lookups
+---
+
+## 2026-02-03 - Compound Product Dead Code Cleanup
+
+### T-001 through T-006: Model and Action Cleanup
+- Deleted entire `src/actions/annotation.rs` - all functions duplicated Document methods
+- Kept only `annotation_offset_by_index` in navigation.rs - the only used function
+- Cleaned `text_range.rs` to only keep `new()` and `contains()`
+- **Important**: `Severity::short()` IS used in ui.rs:207 - preserved it
+
+### T-007 through T-009: App and UI Cleanup
+- Removed `annotation_at()` from document.rs - never called
+- Removed `cursor_offset()` and `sorted_annotation_ids()` from app.rs - never called
+- Removed unused `uuid::Uuid` import from app.rs (type inference handles it)
+- Removed `BASE` color constant from ui.rs - never used
+- Fixed `line_idx` warning by prefixing with underscore
+
+### T-010 through T-012: Verification
+- `cargo check` - zero warnings
+- `cargo test` - 2/2 tests pass
+- `cargo build --release` - successful
+
+### Files Modified
+- src/actions/annotation.rs - DELETED
+- src/actions/navigation.rs - trimmed to 1 function
+- src/actions/mod.rs - simplified exports
+- src/io/mod.rs - simplified exports
+- src/model/text_range.rs - removed unused methods
+- src/model/annotation.rs - removed builder methods (kept Severity::short)
+- src/model/document.rs - removed annotation_at
+- src/app.rs - removed 2 methods + unused import
+- src/ui.rs - removed BASE constant, fixed _line_idx
+
+### Learnings for Future Iterations
+- Always grep for usage before removing methods - `Severity::short()` appeared unused in annotation.rs but was used in ui.rs
+- Rust's type inference means explicit type imports aren't always needed - `a.id` works without importing Uuid
+- When removing functions, check module re-exports too
+---
