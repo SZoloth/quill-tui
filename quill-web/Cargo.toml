@@ -1,0 +1,33 @@
+[package]
+name = "quill-web"
+description = "WebAssembly version of Quill text annotation tool"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+quill-core = { path = "../quill-core" }
+ratzilla.workspace = true
+wasm-bindgen.workspace = true
+web-sys = { workspace = true, features = [
+    "console",
+    "Window",
+    "Document",
+    "Element",
+    "HtmlElement",
+    "Blob",
+    "Url",
+    "HtmlAnchorElement",
+    "HtmlInputElement",
+    "FileList",
+    "File",
+    "FileReader",
+    "Storage",
+    "BlobPropertyBag",
+] }
+js-sys.workspace = true
+serde_json.workspace = true
+console_error_panic_hook = "0.1"

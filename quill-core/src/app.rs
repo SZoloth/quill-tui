@@ -1,6 +1,5 @@
-use anyhow::Result;
-use tui_textarea::TextArea;
-
+use crate::actions;
+use crate::cursor::CursorState;
 use crate::model::{Annotation, Category, Document, Severity, TextRange};
 
 /// Application mode
@@ -28,10 +27,10 @@ pub enum InputTarget {
     FilePath,
 }
 
-/// Application state
-pub struct App<'a> {
+/// Platform-agnostic application state
+pub struct App {
     pub document: Option<Document>,
-    pub textarea: TextArea<'a>,
+    pub cursor: CursorState,
     pub mode: Mode,
     pub focus: Focus,
     pub running: bool,
@@ -58,16 +57,13 @@ pub struct App<'a> {
 
     // Status message
     pub status_message: Option<String>,
-
-    // Line start offsets for coordinate translation
-    line_starts: Vec<usize>,
 }
 
-impl<'a> App<'a> {
+impl App {
     pub fn new() -> Self {
         Self {
             document: None,
-            textarea: TextArea::default(),
+            cursor: CursorState::new(),
             mode: Mode::Normal,
             focus: Focus::Editor,
             running: true,
@@ -88,69 +84,72 @@ impl<'a> App<'a> {
             pending_severity: Severity::ShouldFix,
 
             status_message: None,
-
-            line_starts: vec![0],
         }
     }
 
     pub fn load_document(&mut self, doc: Document) {
-        self.compute_line_starts(&doc.content);
-        let lines: Vec<&str> = doc.content.lines().collect();
-        self.textarea = TextArea::new(lines.iter().map(|s| s.to_string()).collect());
+        self.cursor.set_content(&doc.content);
         self.document = Some(doc);
         self.sidebar_selected = 0;
     }
 
-    fn compute_line_starts(&mut self, content: &str) {
-        self.line_starts.clear();
-        self.line_starts.push(0);
-
-        for (i, c) in content.char_indices() {
-            if c == '\n' {
-                self.line_starts.push(i + 1);
-            }
-        }
+    /// Get cursor position as (row, col)
+    pub fn cursor_pos(&self) -> (usize, usize) {
+        self.cursor.cursor()
     }
 
     /// Convert (row, col) to character offset
     pub fn cursor_to_offset(&self, row: usize, col: usize) -> usize {
-        if row >= self.line_starts.len() {
-            return self.document.as_ref().map(|d| d.content.len()).unwrap_or(0);
-        }
-        self.line_starts[row] + col
+        self.cursor.cursor_to_offset(row, col)
     }
 
     /// Convert character offset to (row, col)
     pub fn offset_to_cursor(&self, offset: usize) -> (usize, usize) {
-        for (i, &start) in self.line_starts.iter().enumerate().rev() {
-            if offset >= start {
-                return (i, offset - start);
-            }
-        }
-        (0, 0)
+        self.cursor.offset_to_cursor(offset)
     }
 
     /// Set cursor to character offset
     pub fn set_cursor_offset(&mut self, offset: usize) {
-        let (row, col) = self.offset_to_cursor(offset);
-        // Move to the target line
-        while self.textarea.cursor().0 > row {
-            self.textarea.move_cursor(tui_textarea::CursorMove::Up);
-        }
-        while self.textarea.cursor().0 < row {
-            self.textarea.move_cursor(tui_textarea::CursorMove::Down);
-        }
-        // Move to the target column
-        self.textarea.move_cursor(tui_textarea::CursorMove::Head);
-        for _ in 0..col {
-            self.textarea.move_cursor(tui_textarea::CursorMove::Forward);
-        }
+        self.cursor.set_cursor_offset(offset);
+    }
+
+    // Cursor movement methods
+    pub fn move_up(&mut self) {
+        self.cursor.move_up();
+    }
+
+    pub fn move_down(&mut self) {
+        self.cursor.move_down();
+    }
+
+    pub fn move_left(&mut self) {
+        self.cursor.move_left();
+    }
+
+    pub fn move_right(&mut self) {
+        self.cursor.move_right();
+    }
+
+    pub fn move_to_top(&mut self) {
+        self.cursor.move_to_top();
+    }
+
+    pub fn move_to_bottom(&mut self) {
+        self.cursor.move_to_bottom();
+    }
+
+    pub fn move_word_forward(&mut self) {
+        self.cursor.move_word_forward();
+    }
+
+    pub fn move_word_back(&mut self) {
+        self.cursor.move_word_back();
     }
 
     /// Enter visual/selection mode
     pub fn enter_visual_mode(&mut self) {
         self.mode = Mode::Visual;
-        let cursor = self.textarea.cursor();
+        let cursor = self.cursor.cursor();
         self.selection_start = Some(cursor);
         self.selection_end = Some(cursor);
     }
@@ -181,7 +180,7 @@ impl<'a> App<'a> {
     /// Update selection end position
     pub fn update_selection(&mut self) {
         if self.mode == Mode::Visual {
-            self.selection_end = Some(self.textarea.cursor());
+            self.selection_end = Some(self.cursor.cursor());
         }
     }
 
@@ -250,7 +249,7 @@ impl<'a> App<'a> {
             let count = doc.annotations.len();
             if count > 0 {
                 self.sidebar_selected = (self.sidebar_selected + 1) % count;
-                if let Some(offset) = crate::actions::annotation_offset_by_index(doc, self.sidebar_selected) {
+                if let Some(offset) = actions::annotation_offset_by_index(doc, self.sidebar_selected) {
                     self.set_cursor_offset(offset);
                 }
             }
@@ -267,7 +266,7 @@ impl<'a> App<'a> {
                 } else {
                     self.sidebar_selected - 1
                 };
-                if let Some(offset) = crate::actions::annotation_offset_by_index(doc, self.sidebar_selected) {
+                if let Some(offset) = actions::annotation_offset_by_index(doc, self.sidebar_selected) {
                     self.set_cursor_offset(offset);
                 }
             }
@@ -311,13 +310,6 @@ impl<'a> App<'a> {
         false
     }
 
-    /// Export document
-    pub fn export(&self) -> Result<std::path::PathBuf> {
-        let doc = self.document.as_ref()
-            .ok_or_else(|| anyhow::anyhow!("No document loaded"))?;
-        crate::io::export_document(doc)
-    }
-
     /// Set status message
     pub fn set_status(&mut self, msg: &str) {
         self.status_message = Some(msg.to_string());
@@ -343,9 +335,17 @@ impl<'a> App<'a> {
             .and_then(|d| d.filename.clone())
             .unwrap_or_else(|| "Untitled".to_string())
     }
+
+    /// Get content lines for rendering
+    pub fn content_lines(&self) -> Vec<&str> {
+        self.document
+            .as_ref()
+            .map(|d| d.content.lines().collect())
+            .unwrap_or_default()
+    }
 }
 
-impl Default for App<'_> {
+impl Default for App {
     fn default() -> Self {
         Self::new()
     }

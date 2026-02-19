@@ -1,3 +1,5 @@
+//! Terminal UI rendering using ratatui
+
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
@@ -6,8 +8,7 @@ use ratatui::{
     Frame,
 };
 
-use crate::app::{App, Focus, InputTarget, Mode};
-use crate::model::{Category, Severity};
+use quill_core::{App, Category, Focus, InputTarget, Mode, Severity};
 
 // Catppuccin Mocha colors
 const SURFACE0: Color = Color::Rgb(49, 50, 68);
@@ -152,7 +153,7 @@ fn draw_editor(frame: &mut Frame, app: &App, area: Rect) {
         }
 
         // Calculate scroll offset based on cursor
-        let cursor = app.textarea.cursor();
+        let cursor = app.cursor_pos();
         let visible_height = inner.height as usize;
         let scroll_offset = if cursor.0 >= visible_height {
             cursor.0 - visible_height + 1

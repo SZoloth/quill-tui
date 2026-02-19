@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quill TUI - Text Annotation Tool</title>
+    <link data-trunk rel="rust" data-wasm-opt="z" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #1e1e2e;
+            padding: 20px;
+        }
+
+        /* Terminal container styling */
+        pre {
+            font-family: "Fira Code", "JetBrains Mono", "SF Mono", Menlo, monospace;
+            font-size: 14px;
+            line-height: 1.4;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Focus indicator for keyboard accessibility */
+        .terminal-focus {
+            outline: 2px solid #89b4fa;
+            outline-offset: 4px;
+            border-radius: 8px;
+        }
+
+        /* Loading state */
+        .loading {
+            color: #cdd6f4;
+            font-family: system-ui, sans-serif;
+            text-align: center;
+        }
+
+        .loading h1 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .loading p {
+            color: #a6adc8;
+        }
+
+        /* Instructions overlay - hidden once WASM loads */
+        #instructions {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(30, 30, 46, 0.9);
+            border: 1px solid #45475a;
+            border-radius: 8px;
+            padding: 12px 20px;
+            color: #cdd6f4;
+            font-family: system-ui, sans-serif;
+            font-size: 0.875rem;
+            z-index: 100;
+        }
+
+        #instructions kbd {
+            background: #45475a;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading" id="loading">
+        <h1>Loading Quill TUI...</h1>
+        <p>Initializing WebAssembly</p>
+    </div>
+
+    <div id="instructions">
+        Press <kbd>v</kbd> to select text, <kbd>a</kbd> to annotate, <kbd>?</kbd> for help
+    </div>
+
+    <script>
+        // Hide loading message once WASM initializes
+        document.addEventListener('DOMContentLoaded', () => {
+            // The Ratzilla terminal will replace the body content
+            const observer = new MutationObserver((mutations) => {
+                for (const mutation of mutations) {
+                    if (mutation.addedNodes.length > 0) {
+                        const loading = document.getElementById('loading');
+                        if (loading) loading.style.display = 'none';
+
+                        // Hide instructions after 10 seconds
+                        setTimeout(() => {
+                            const instructions = document.getElementById('instructions');
+                            if (instructions) {
+                                instructions.style.opacity = '0';
+                                instructions.style.transition = 'opacity 0.5s';
+                                setTimeout(() => instructions.remove(), 500);
+                            }
+                        }, 10000);
+                    }
+                }
+            });
+
+            observer.observe(document.body, { childList: true, subtree: true });
+        });
+    </script>
+</body>
+</html>

@@ -34,19 +34,11 @@ impl Document {
         }
     }
 
-    pub fn from_file(filepath: &str, content: String) -> Self {
-        let path = std::path::Path::new(filepath);
-        let filename = path
-            .file_name()
-            .map(|s| s.to_string_lossy().to_string());
-        let title = path
-            .file_stem()
-            .map(|s| s.to_string_lossy().to_string())
-            .unwrap_or_else(|| "Untitled".to_string());
-
+    /// Create a document with filename metadata (used by CLI when loading from file)
+    pub fn with_file_info(title: String, content: String, filepath: String, filename: String) -> Self {
         let mut doc = Self::new(title, content);
-        doc.filepath = Some(filepath.to_string());
-        doc.filename = filename;
+        doc.filepath = Some(filepath);
+        doc.filename = Some(filename);
         doc
     }
 

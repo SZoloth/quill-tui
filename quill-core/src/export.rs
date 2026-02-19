@@ -1,9 +1,6 @@
-use anyhow::{Context, Result};
 use serde::Serialize;
-use std::fs;
-use std::path::PathBuf;
 
-use crate::model::{Annotation, Document};
+use crate::model::{Annotation, Document, Severity};
 
 /// Export format matching macOS Quill app
 #[derive(Debug, Serialize)]
@@ -37,9 +34,9 @@ impl From<&Annotation> for ExportAnnotation {
             text: ann.selected_text.clone(),
             category: ann.category.map(|c| format!("{:?}", c).to_uppercase()),
             severity: match ann.severity {
-                crate::model::Severity::MustFix => "must-fix",
-                crate::model::Severity::ShouldFix => "should-fix",
-                crate::model::Severity::Consider => "consider",
+                Severity::MustFix => "must-fix",
+                Severity::ShouldFix => "should-fix",
+                Severity::Consider => "consider",
             }
             .to_string(),
             comment: ann.comment.clone(),
@@ -89,7 +86,7 @@ pub fn generate_prompt(doc: &Document) -> String {
     prompt.push_str(&format!("### Annotations ({} items)\n\n", unresolved.len()));
 
     // Group by severity
-    for severity in crate::model::Severity::all() {
+    for severity in Severity::all() {
         let items: Vec<_> = unresolved
             .iter()
             .filter(|a| a.severity == *severity)
@@ -117,38 +114,16 @@ pub fn generate_prompt(doc: &Document) -> String {
     prompt
 }
 
-/// Get the ~/.quill directory path, creating it if needed
-pub fn quill_dir() -> Result<PathBuf> {
-    let home = dirs::home_dir().context("Could not find home directory")?;
-    let quill_dir = home.join(".quill");
-
-    if !quill_dir.exists() {
-        fs::create_dir_all(&quill_dir)
-            .with_context(|| format!("Failed to create {}", quill_dir.display()))?;
-    }
-
-    Ok(quill_dir)
-}
-
-/// Export document to ~/.quill/document.json
-pub fn export_document(doc: &Document) -> Result<PathBuf> {
-    let quill_dir = quill_dir()?;
-    let export_path = quill_dir.join("document.json");
-
+/// Serialize a document to JSON string
+pub fn to_json(doc: &Document) -> Result<String, serde_json::Error> {
     let export_doc = ExportDocument::from(doc);
-    let json = serde_json::to_string_pretty(&export_doc)
-        .context("Failed to serialize document")?;
-
-    fs::write(&export_path, json)
-        .with_context(|| format!("Failed to write {}", export_path.display()))?;
-
-    Ok(export_path)
+    serde_json::to_string_pretty(&export_doc)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::{Annotation, Category, Severity, TextRange};
+    use crate::model::{Category, TextRange};
 
     #[test]
     fn test_export_annotation_format() {
@@ -171,7 +146,7 @@ mod tests {
 
     #[test]
     fn test_export_document_format() {
-        let mut doc = crate::model::Document::new("Test".to_string(), "Hello world".to_string());
+        let mut doc = Document::new("Test".to_string(), "Hello world".to_string());
         doc.filepath = Some("/path/to/file.md".to_string());
         doc.filename = Some("file.md".to_string());
 

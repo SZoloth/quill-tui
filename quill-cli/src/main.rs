@@ -1,7 +1,6 @@
-mod actions;
-mod app;
+//! Quill CLI - Terminal-based text annotation tool
+
 mod io;
-mod model;
 mod ui;
 
 use std::io::stdout;
@@ -14,8 +13,7 @@ use crossterm::{
 };
 use ratatui::prelude::*;
 
-use app::{App, Focus, InputTarget, Mode};
-use model::{Category, Severity};
+use quill_core::{generate_prompt, App, Category, Focus, InputTarget, Mode, Severity};
 
 fn main() -> Result<()> {
     // Get file path from args
@@ -93,29 +91,29 @@ fn handle_normal_mode(app: &mut App, code: KeyCode, _modifiers: KeyModifiers) {
         // Navigation
         KeyCode::Char('j') | KeyCode::Down => {
             if app.focus == Focus::Editor {
-                app.textarea.move_cursor(tui_textarea::CursorMove::Down);
+                app.move_down();
             } else {
                 app.next_annotation();
             }
         }
         KeyCode::Char('k') | KeyCode::Up => {
             if app.focus == Focus::Editor {
-                app.textarea.move_cursor(tui_textarea::CursorMove::Up);
+                app.move_up();
             } else {
                 app.prev_annotation();
             }
         }
         KeyCode::Char('h') | KeyCode::Left => {
-            app.textarea.move_cursor(tui_textarea::CursorMove::Back);
+            app.move_left();
         }
         KeyCode::Char('l') | KeyCode::Right => {
-            app.textarea.move_cursor(tui_textarea::CursorMove::Forward);
+            app.move_right();
         }
         KeyCode::Char('g') => {
-            app.textarea.move_cursor(tui_textarea::CursorMove::Top);
+            app.move_to_top();
         }
         KeyCode::Char('G') => {
-            app.textarea.move_cursor(tui_textarea::CursorMove::Bottom);
+            app.move_to_bottom();
         }
 
         // Annotation navigation
@@ -138,14 +136,16 @@ fn handle_normal_mode(app: &mut App, code: KeyCode, _modifiers: KeyModifiers) {
 
         // Export
         KeyCode::Char('e') => {
-            match app.export() {
-                Ok(path) => app.set_status(&format!("Exported to {}", path.display())),
-                Err(e) => app.set_status(&format!("Export failed: {}", e)),
+            if let Some(doc) = &app.document {
+                match io::export_document(doc) {
+                    Ok(path) => app.set_status(&format!("Exported to {}", path.display())),
+                    Err(e) => app.set_status(&format!("Export failed: {}", e)),
+                }
             }
         }
         KeyCode::Char('E') => {
             if let Some(doc) = &app.document {
-                let prompt = io::generate_prompt(doc);
+                let prompt = generate_prompt(doc);
                 // In a real app, we'd copy to clipboard or show in a pane
                 app.set_status(&format!("Prompt generated ({} chars)", prompt.len()));
             }
@@ -170,27 +170,27 @@ fn handle_visual_mode(app: &mut App, code: KeyCode) {
             app.selection_end = None;
         }
         KeyCode::Char('j') | KeyCode::Down => {
-            app.textarea.move_cursor(tui_textarea::CursorMove::Down);
+            app.move_down();
             app.update_selection();
         }
         KeyCode::Char('k') | KeyCode::Up => {
-            app.textarea.move_cursor(tui_textarea::CursorMove::Up);
+            app.move_up();
             app.update_selection();
         }
         KeyCode::Char('h') | KeyCode::Left => {
-            app.textarea.move_cursor(tui_textarea::CursorMove::Back);
+            app.move_left();
             app.update_selection();
         }
         KeyCode::Char('l') | KeyCode::Right => {
-            app.textarea.move_cursor(tui_textarea::CursorMove::Forward);
+            app.move_right();
             app.update_selection();
         }
         KeyCode::Char('w') => {
-            app.textarea.move_cursor(tui_textarea::CursorMove::WordForward);
+            app.move_word_forward();
             app.update_selection();
         }
         KeyCode::Char('b') => {
-            app.textarea.move_cursor(tui_textarea::CursorMove::WordBack);
+            app.move_word_back();
             app.update_selection();
         }
         KeyCode::Char('a') => {
